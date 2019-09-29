@@ -1,0 +1,165 @@
+<script>
+    var sizingPopup,
+        popups = {},
+        popupList = [],
+        minWidth, minHeight,
+        gridWidth, gridHeight;
+
+    var map = {};
+    
+    var colors = [
+            //'ff0000', '00ff00', '0000ff',
+            //'ffff00', 'ff00ff', '00ffff'
+            '555555', 'ffaaff', '33ffff',
+            'ff0000', '33cc33'
+        ];
+
+    function wait(milliseconds) {
+        return new Promise((resolve, reject) => {
+            setTimeout(resolve, milliseconds);
+        });
+    }
+
+    function placePopup(x, y, color) {
+        var sX = (x*minWidth)+window.screenLeft,
+            sY = (y*minHeight)+window.screenTop,
+            popup;
+
+        popup = popups[x+','+y] = window.open('popup.html?'+Date.now(), 'popup-'+x+'-'+y, 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+        popup.resizeTo(minWidth, minHeight);
+        popupList.push(popup);
+
+        popup.document.write('<body style="background: #'+color+'"></body>');
+    }
+
+    function checkMoves() {
+        for (y = 0; y < gridHeight; y ++) {
+            for (x = 0; x < gridWidth; x ++) {
+                const tile = map[x+','+y];
+
+                if (x+2 < gridWidth) {
+                    if (map[(x+2)+','+y] == tile) {
+                        if (y>0 && map[(x+1)+','+(y-1)] == tile) return ['h',x,y];
+                        if (y+1<gridHeight && map[(x+1)+','+(y+1)] == tile) return ['h',x,y];
+                    }
+                }
+
+                if (y+2 < gridHeight) {
+                    if (map[x+','+(y+2)] == tile) {
+                        if (x>0 && map[(x-1)+','+(y+1)] == tile) return ['v',x,y];
+                        if (x+1<gridWidth && map[(x+1)+','+(y+1)] == tile) return ['v',x,y];
+                    }
+                }
+            }
+        }
+    }
+
+    function generateMap() {
+        for (x = 0; x < gridWidth; x ++) {
+            for (y = 0; y < gridHeight; y ++) {
+                let r;
+
+                do {
+                    r = Math.floor(Math.random()*colors.length);
+                }
+                while ((x>0 && map[(x-1)+','+y]==r) || (y>0 && map[x+','+(y-1)]==r));
+
+                map[x+','+y] = r;
+            }
+        }
+
+        if (!checkMoves()) {
+            console.log('no moves');
+            generateMap();
+        }
+    }
+    
+    function size() {
+        sizingPopup.resizeTo(1, 1);
+
+        setTimeout(async () => {
+            var x, y;
+
+            minWidth = sizingPopup.outerWidth;
+            minHeight = sizingPopup.outerHeight;
+
+            sizingPopup.close();
+            sizingPopup = null;
+
+            gridWidth = Math.floor(window.outerWidth / minWidth);
+            gridHeight = Math.floor(window.outerHeight / minHeight);
+
+            minWidth = Math.floor(window.outerWidth / gridWidth);
+            minHeight = Math.floor(window.outerHeight / gridHeight);
+
+            generateMap();
+
+            for (x = 0; x < gridWidth; x ++) {
+                for (y = 0; y < gridHeight; y ++) {
+                    placePopup(x, y, colors[map[x+','+y]]);
+                    await wait(200);
+                }
+            }
+        }, 200);
+    }
+
+    function loop() {
+        popupList.forEach((popup) => {
+            if (popup && !popup.window) {
+                close();
+            }
+        });
+
+        setTimeout(loop, 1000/10);
+    }
+
+    function setup() {
+        gridWidth = 8;
+        gridHeight = 8;
+        generateMap();
+
+        const pre = document.createElement('pre');
+        document.body.appendChild(pre);
+
+        for (y = 0; y < gridHeight; y ++) {
+            for (x = 0; x < gridWidth; x ++) {
+                const span = document.createElement('span');
+                span.innerHTML = map[x+','+y];
+                span.style.display = 'inline-block';
+                span.style.width = 20;
+                span.style.height = 20;
+                span.style.background = '#' + colors[map[x+','+y]];
+                pre.appendChild(span);
+            }
+            pre.appendChild(document.createElement('br'));
+        }
+
+        return;
+
+        if (sizingPopup || popupList.length) return;
+
+        sizingPopup = window.open('popup.html', 'popup-0-0', 'width=1,height=1,left='+window.screenLeft+',top='+window.screenTop);
+        setTimeout(size, 200);
+
+        loop();
+    }
+
+    function close() {
+        let list = popupList;
+
+        popups = {};
+        popupList = [];
+
+        while (list.length) {
+            let popup = list.pop();
+            popup.close();
+        };
+    }
+
+    window.addEventListener('load', function () {
+        setup();
+        document.getElementById('launch').addEventListener('click', setup);
+        document.getElementById('close').addEventListener('click', close);
+    });
+</script>
+<button id="launch">launch</button><button id="close">close</button>
