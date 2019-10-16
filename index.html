@@ -1,7 +1,5 @@
 <script>
     var sizingPopup,
-        popups = {},
-        popupList = [],
         minWidth, minHeight,
         gridWidth, gridHeight;
 
@@ -20,58 +18,134 @@
         });
     }
 
-    function placePopup(x, y, color) {
-        var sX = (x*minWidth)+window.screenLeft,
-            sY = (y*minHeight)+window.screenTop,
-            popup;
+    function getTile(x, y) {
+        if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+            return map[x+','+y];
+        }
+        else {
+            return {};
+        }
+    }
 
-        popup = popups[x+','+y] = window.open('popup.html?'+Date.now(), 'popup-'+x+'-'+y, 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+    function placePopup(x, y, color) {
+        const sX = (x*minWidth)+window.screenLeft;
+        const sY = (y*minHeight)+window.screenTop;
+
+        const popup = window.open('popup.html?'+Date.now(), 'popup-'+x+'-'+y, 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
         popup.resizeTo(minWidth, minHeight);
-        popupList.push(popup);
+
+        const tile = getTile(x, y);
+        tile.popup = popup;
 
         popup.document.write('<body style="background: #'+color+'"></body>');
     }
 
-    function checkMoves() {
-        for (y = 0; y < gridHeight; y ++) {
-            for (x = 0; x < gridWidth; x ++) {
-                const tile = map[x+','+y];
+    // NOTE: The next three functions could totally be optimized but that hurts my brain too much
 
-                if (x+2 < gridWidth) {
-                    if (map[(x+2)+','+y] == tile) {
-                        if (y>0 && map[(x+1)+','+(y-1)] == tile) return ['h',x,y];
-                        if (y+1<gridHeight && map[(x+1)+','+(y+1)] == tile) return ['h',x,y];
-                    }
+    function checkMatches() {
+        const matches = [];
+
+        // horizontal
+        for (y = 0; y < gridHeight; y ++) {
+            for (x = 2; x < gridWidth; x ++) {
+                const a = getTile(x-2, y);
+                const b = getTile(x-1, y);
+                const c = getTile(x-0, y);
+
+                if (a.type == b.type && b.type == c.type) {
+                    //return [0, x-2, y];
+                    matches.push(a, b, c);
+                }
+            }
+        }
+
+        // vertical
+        for (x = 0; x < gridWidth; x ++) {
+            for (y = 2; y < gridHeight; y ++) {
+                const a = getTile(x, y-2);
+                const b = getTile(x, y-1);
+                const c = getTile(x, y-0);
+
+                if (a.type == b.type && b.type == c.type) {
+                    //return [1, x, y-2];
+                    matches.push(a, b, c);
+                }
+            }
+        }
+
+        if (matches.length) {
+            return matches;
+        }
+    }
+
+    function checkMoves() {
+        // horizontal
+        for (y = 0; y < gridHeight; y ++) {
+            for (x = 2; x < gridWidth; x ++) {
+                const a = getTile(x-2, y).type;
+                const b = getTile(x-1, y).type;
+                const c = getTile(x-0, y).type;
+
+                // 110
+                if (a == b && (getTile(x, y-1).type == a || getTile(x, y+1).type == a || getTile(x+1, y).type == a)) {
+                    return [0, x-2, y];
                 }
 
-                if (y+2 < gridHeight) {
-                    if (map[x+','+(y+2)] == tile) {
-                        if (x>0 && map[(x-1)+','+(y+1)] == tile) return ['v',x,y];
-                        if (x+1<gridWidth && map[(x+1)+','+(y+1)] == tile) return ['v',x,y];
-                    }
+                // 011
+                if (b == c && (getTile(x-2, y-1).type == b || getTile(x-2, y+1).type == b || getTile(x-3, y).type == b)) {
+                    return [0, x-2, y];
+                }
+
+                // 101
+                if (a == c && (getTile(x-1, y-1).type == a || getTile(x-1, y+1).type == a)) {
+                    return [0, x-2, y];
+                }
+            }
+        }
+
+        // vertical
+        for (x = 0; x < gridWidth; x ++) {
+            for (y = 2; y < gridHeight; y ++) {
+                const a = getTile(x, y-2).type;
+                const b = getTile(x, y-1).type;
+                const c = getTile(x, y-0).type;
+
+                // 110
+                if (a == b && (getTile(x-1, y).type == a || getTile(x+1, y).type == a || getTile(x, y+1).type == a)) {
+                    return [1, x, y-2];
+                }
+
+                // 011
+                if (b == c && (getTile(x-1, y-2).type == b || getTile(x+1, y-2).type == b || getTile(x, y-3).type == b)) {
+                    return [1, x, y-2];
+                }
+
+                // 101
+                if (a == c && (getTile(x-1, y-1).type == a || getTile(x+1, y-1).type == a)) {
+                    return [1, x, y-2];
                 }
             }
         }
     }
 
     function generateMap() {
-        for (x = 0; x < gridWidth; x ++) {
-            for (y = 0; y < gridHeight; y ++) {
-                let r;
+        let count = 0;
 
-                do {
-                    r = Math.floor(Math.random()*colors.length);
+        do {
+            for (x = 0; x < gridWidth; x ++) {
+                for (y = 0; y < gridHeight; y ++) {
+                    const type = Math.floor(Math.random()*colors.length);
+                    // TODO: usethisagain??? while ((x>0 && map[(x-1)+','+y]==r) || (y>0 && map[x+','+(y-1)]==r));
+
+                    map[x+','+y] = {x, y, type};
                 }
-                while ((x>0 && map[(x-1)+','+y]==r) || (y>0 && map[x+','+(y-1)]==r));
-
-                map[x+','+y] = r;
             }
-        }
 
-        if (!checkMoves()) {
-            console.log('no moves');
-            generateMap();
+            count ++;
         }
+        while (checkMatches() || !checkMoves());
+
+        console.log('regens ' + count);
     }
     
     function size() {
@@ -86,80 +160,169 @@
             sizingPopup.close();
             sizingPopup = null;
 
-            gridWidth = Math.floor(window.outerWidth / minWidth);
+            gridWidth = 4;//Math.floor(window.outerWidth / minWidth);
             gridHeight = Math.floor(window.outerHeight / minHeight);
 
-            minWidth = Math.floor(window.outerWidth / gridWidth);
+            //minWidth = Math.floor(window.outerWidth / gridWidth);
             minHeight = Math.floor(window.outerHeight / gridHeight);
 
             generateMap();
 
             for (x = 0; x < gridWidth; x ++) {
                 for (y = 0; y < gridHeight; y ++) {
-                    placePopup(x, y, colors[map[x+','+y]]);
+                    placePopup(x, y, colors[getTile(x, y).type]);
                     await wait(200);
                 }
             }
+
+            setTimeout(loop, 200);
         }, 200);
     }
 
-    function loop() {
-        popupList.forEach((popup) => {
-            if (popup && !popup.window) {
-                close();
-            }
-        });
+    function moveTile(tile, gridX, gridY) {
+        const screenX = (gridX*minWidth)+window.screenLeft;
+        const screenY = (gridY*minHeight)+window.screenTop;
+        const popup = tile.popup;
 
-        setTimeout(loop, 1000/10);
+        tile.x = gridX;
+        tile.y = gridY;
+
+        popup.moveTo(screenX, screenY);
+    }
+
+    function trySwap(tile, gridX, gridY) {
+        const originalX = tile.x;
+        const originalY = tile.y;
+        const otherTile = getTile(gridX, gridY);
+
+        map[gridX+','+gridY] = tile;
+        map[originalX+','+originalY] = otherTile;
+
+        const matches = checkMatches();
+
+        if (matches) {
+            console.log('has matches');
+
+            moveTile(tile, gridX, gridY);
+            moveTile(otherTile, originalX, originalY);
+
+            removeMatches(matches);
+        }
+        else {
+            console.log('no matches');
+
+            // move back
+            map[originalX+','+originalY] = tile;
+            map[gridX+','+gridY] = otherTile;
+
+            moveTile(tile, originalX, originalY);
+        }
+    }
+
+    function removeMatches(matches) {
+        matches.forEach((tile) => {
+            tile.popup.close();
+        });
+    }
+
+    function loop() {
+        let shouldClose = false;
+
+        for (let x = 0; x < gridWidth; x ++) {
+            for (let y = 0; y < gridHeight; y ++) {
+                const tile = getTile(x, y);
+
+                if (tile) {
+                    const popup = tile.popup;
+
+                    if (!popup || (popup && !popup.window)) {
+                        //shouldClose = true; // TODO: get this workin'
+                    }
+                    else {
+                        let screenX = popup.screenLeft;
+                        let screenY = popup.screenTop;
+
+                        if (tile.last) {
+                            if (tile.last.x != screenX || tile.last.y != screenY) {
+                                tile.didMove = true;
+                                tile.lastMoveTime = Date.now();
+                            }
+                        }
+                        tile.last = {x: screenX, y: screenY};
+
+                        if (tile.didMove && Date.now()-(tile.lastMoveTime||0) > 200) { // if window hasn't been moved in >200ms
+                            const gridX = Math.round((popup.screenLeft - window.screenLeft) / popup.outerWidth);
+                            const gridY = Math.round((popup.screenTop - window.screenTop) / popup.outerHeight);
+
+                            if (gridX != tile.x || gridY != tile.y) {
+                                trySwap(tile, gridX, gridY);
+                            }
+                            else {
+                                console.log('didnt move');
+                                moveTile(tile, tile.x, tile.y);
+                            }
+
+                            tile.didMove = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (shouldClose) {
+            close();
+        }
+        else {
+            setTimeout(loop, 1000/10);
+        }
     }
 
     function setup() {
-        gridWidth = 8;
-        gridHeight = 8;
-        generateMap();
-
-        const pre = document.createElement('pre');
-        document.body.appendChild(pre);
-
-        for (y = 0; y < gridHeight; y ++) {
-            for (x = 0; x < gridWidth; x ++) {
-                const span = document.createElement('span');
-                span.innerHTML = map[x+','+y];
-                span.style.display = 'inline-block';
-                span.style.width = 20;
-                span.style.height = 20;
-                span.style.background = '#' + colors[map[x+','+y]];
-                pre.appendChild(span);
-            }
-            pre.appendChild(document.createElement('br'));
-        }
-
-        return;
-
-        if (sizingPopup || popupList.length) return;
-
         sizingPopup = window.open('popup.html', 'popup-0-0', 'width=1,height=1,left='+window.screenLeft+',top='+window.screenTop);
         setTimeout(size, 200);
-
-        loop();
     }
 
     function close() {
-        let list = popupList;
+        Object.keys(map).forEach((key) => {
+            const tile = map[key];
 
-        popups = {};
-        popupList = [];
+            if (tile.popup) {
+                tile.popup.close();
+            }
 
-        while (list.length) {
-            let popup = list.pop();
-            popup.close();
-        };
+            delete map[key];
+        });
+    }
+
+    function debug() {
+        const table = document.createElement('table');
+
+        gridWidth = 10;
+        gridHeight = 10;
+        generateMap();
+
+        for (y = 0; y < gridHeight; y ++) {
+            const row = document.createElement('tr');
+
+            for (x = 0; x < gridWidth; x ++) {
+                const tile = getTile(x, y);
+                const cell = document.createElement('td');
+                cell.style.width = 20;
+                cell.style.height = 20;
+                cell.style.background = `#${colors[tile.type]}`;
+                row.appendChild(cell);
+            }
+
+            table.appendChild(row);
+        }
+
+        document.body.appendChild(table);
     }
 
     window.addEventListener('load', function () {
-        setup();
         document.getElementById('launch').addEventListener('click', setup);
         document.getElementById('close').addEventListener('click', close);
+        document.getElementById('debug').addEventListener('click', debug);
     });
 </script>
-<button id="launch">launch</button><button id="close">close</button>
+<button id="launch">launch</button><button id="close">close</button><br/><button id="debug">debug</button>
