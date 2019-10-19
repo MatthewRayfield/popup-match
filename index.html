@@ -12,29 +12,38 @@
             'ff0000', '33cc33'
         ];
 
+    var mode = 'movable';
+
     function wait(milliseconds) {
         return new Promise((resolve, reject) => {
             setTimeout(resolve, milliseconds);
         });
     }
 
+    function pushIfNotIn(array, item) {
+        if (array.indexOf(item) == -1) {
+            array.push(item);
+        }
+    }
+
     function getTile(x, y) {
         if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
-            return map[x+','+y];
+            return map[x+','+y] || {};
         }
         else {
             return {};
         }
     }
 
-    function placePopup(x, y, color) {
+    function placePopup(x, y) {
+        const tile = getTile(x, y);
+        const color = colors[tile.type];
         const sX = (x*minWidth)+window.screenLeft;
         const sY = (y*minHeight)+window.screenTop;
 
-        const popup = window.open('popup.html?'+Date.now(), 'popup-'+x+'-'+y, 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+        const popup = window.open('popup.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
         popup.resizeTo(minWidth, minHeight);
 
-        const tile = getTile(x, y);
         tile.popup = popup;
 
         popup.document.write('<body style="background: #'+color+'"></body>');
@@ -53,8 +62,9 @@
                 const c = getTile(x-0, y);
 
                 if (a.type == b.type && b.type == c.type) {
-                    //return [0, x-2, y];
-                    matches.push(a, b, c);
+                    pushIfNotIn(matches, a);
+                    pushIfNotIn(matches, b);
+                    pushIfNotIn(matches, c);
                 }
             }
         }
@@ -67,8 +77,9 @@
                 const c = getTile(x, y-0);
 
                 if (a.type == b.type && b.type == c.type) {
-                    //return [1, x, y-2];
-                    matches.push(a, b, c);
+                    pushIfNotIn(matches, a);
+                    pushIfNotIn(matches, b);
+                    pushIfNotIn(matches, c);
                 }
             }
         }
@@ -137,7 +148,7 @@
                     const type = Math.floor(Math.random()*colors.length);
                     // TODO: usethisagain??? while ((x>0 && map[(x-1)+','+y]==r) || (y>0 && map[x+','+(y-1)]==r));
 
-                    map[x+','+y] = {x, y, type};
+                    map[x+','+y] = {type};
                 }
             }
 
@@ -160,7 +171,7 @@
             sizingPopup.close();
             sizingPopup = null;
 
-            gridWidth = 4;//Math.floor(window.outerWidth / minWidth);
+            gridWidth = 5;//Math.floor(window.outerWidth / minWidth);
             gridHeight = Math.floor(window.outerHeight / minHeight);
 
             //minWidth = Math.floor(window.outerWidth / gridWidth);
@@ -170,7 +181,7 @@
 
             for (x = 0; x < gridWidth; x ++) {
                 for (y = 0; y < gridHeight; y ++) {
-                    placePopup(x, y, colors[getTile(x, y).type]);
+                    placePopup(x, y);
                     await wait(200);
                 }
             }
@@ -179,101 +190,149 @@
         }, 200);
     }
 
-    function moveTile(tile, gridX, gridY) {
+    async function moveTile(tile, gridX, gridY, speed) {
         const screenX = (gridX*minWidth)+window.screenLeft;
         const screenY = (gridY*minHeight)+window.screenTop;
         const popup = tile.popup;
 
-        tile.x = gridX;
-        tile.y = gridY;
+        if (speed) {
+            const steps = speed/10;
+            const xDiff = screenX-popup.screenLeft;
+            const yDiff = screenY-popup.screenTop;
 
-        popup.moveTo(screenX, screenY);
+            for (let i = 1; i <= steps; i ++) {
+                popup.moveTo(
+                    screenX - ((steps-i)*(xDiff/steps)),
+                    screenY - ((steps-i)*(yDiff/steps))
+                );
+                await wait(10);
+            }
+        }
+        else {
+            popup.moveTo(screenX, screenY);
+        }
     }
 
-    function trySwap(tile, gridX, gridY) {
-        const originalX = tile.x;
-        const originalY = tile.y;
-        const otherTile = getTile(gridX, gridY);
+    async function trySwap(aX, aY, bX, bY) {
+        mode = 'swapping';
 
-        map[gridX+','+gridY] = tile;
-        map[originalX+','+originalY] = otherTile;
+        const aTile = getTile(aX, aY);
+        const bTile = getTile(bX, bY);
 
-        const matches = checkMatches();
+        map[aX+','+aY] = bTile;
+        map[bX+','+bY] = aTile;
 
-        if (matches) {
-            console.log('has matches');
+        if (aTile.popup && bTile.popup) {
+            if (checkMatches()) {
+                console.log('has matches');
 
-            moveTile(tile, gridX, gridY);
-            moveTile(otherTile, originalX, originalY);
+                moveTile(aTile, bX, bY);
+                moveTile(bTile, aX, aY);
+                await wait(500);
 
-            removeMatches(matches);
+                while (checkMatches()) {
+                    removeMatches();
+                    await wait(500);
+
+                    await fallAndFill();
+                }
+            }
         }
         else {
             console.log('no matches');
 
             // move back
-            map[originalX+','+originalY] = tile;
-            map[gridX+','+gridY] = otherTile;
+            map[aX+','+aY] = aTile;
+            map[bX+','+bY] = bTile;
 
-            moveTile(tile, originalX, originalY);
+            moveTile(aTile, aX, aY);
+            moveTile(bTile, bX, bY);
         }
+
+        mode = 'movable';
     }
 
-    function removeMatches(matches) {
+    function removeMatches() {
+        const matches = checkMatches();
+
         matches.forEach((tile) => {
             tile.popup.close();
+            tile.popup = null;
         });
     }
 
-    function loop() {
-        let shouldClose = false;
+    function fallAndFill() {
+        return new Promise(async (resolve, reject) => {
+            let repeat = false;
 
-        for (let x = 0; x < gridWidth; x ++) {
-            for (let y = 0; y < gridHeight; y ++) {
-                const tile = getTile(x, y);
+            for (let y = gridHeight-1; y >= 1; y --) {
+                for (let x = 0; x < gridWidth; x ++) {
+                    const tile = getTile(x, y);
+                    const above = getTile(x, y-1);
 
-                if (tile) {
-                    const popup = tile.popup;
-
-                    if (!popup || (popup && !popup.window)) {
-                        //shouldClose = true; // TODO: get this workin'
-                    }
-                    else {
-                        let screenX = popup.screenLeft;
-                        let screenY = popup.screenTop;
-
-                        if (tile.last) {
-                            if (tile.last.x != screenX || tile.last.y != screenY) {
-                                tile.didMove = true;
-                                tile.lastMoveTime = Date.now();
-                            }
-                        }
-                        tile.last = {x: screenX, y: screenY};
-
-                        if (tile.didMove && Date.now()-(tile.lastMoveTime||0) > 200) { // if window hasn't been moved in >200ms
-                            const gridX = Math.round((popup.screenLeft - window.screenLeft) / popup.outerWidth);
-                            const gridY = Math.round((popup.screenTop - window.screenTop) / popup.outerHeight);
-
-                            if (gridX != tile.x || gridY != tile.y) {
-                                trySwap(tile, gridX, gridY);
-                            }
-                            else {
-                                console.log('didnt move');
-                                moveTile(tile, tile.x, tile.y);
-                            }
-
-                            tile.didMove = false;
+                    if (!tile.popup) {
+                        if (above.popup) {
+                            map[x+','+(y-1)] = null;
+                            map[x+','+y] = above;
+                            moveTile(above, x, y, 50);
                         }
                     }
                 }
             }
-        }
 
-        if (shouldClose) {
-            close();
-        }
-        else {
-            setTimeout(loop, 1000/10);
+            await wait(50);
+
+            for (y = 0; y < gridHeight; y ++) {
+                for (x = 0; x < gridWidth; x ++) {
+                    const tile = getTile(x, y);
+
+                    if (!tile.popup) {
+                        if (y == 0) {
+                            const type = Math.floor(Math.random()*colors.length);
+                            map[x+','+y] = {type};
+                            placePopup(x, y);
+                        }
+                        else {
+                            repeat = true;
+                        }
+                    }
+                }
+            }
+
+            await wait(500);
+
+            if (repeat) {
+                console.log('repeat');
+                await fallAndFill();
+            }
+
+            resolve();
+        });
+    }
+
+    let lastMoveCheck = 0;
+    function loop() {
+        setTimeout(loop, 1000/10);
+
+        if (mode == 'movable' && Date.now() - lastMoveCheck > 200) {
+            lastMoveCheck = Date.now();
+
+            for (let x = 0; x < gridWidth; x ++) {
+                for (let y = 0; y < gridHeight; y ++) {
+                    const tile = getTile(x, y);
+                    const popup = tile.popup;
+
+                    if (popup) {
+                        const gridX = Math.round((popup.screenLeft - window.screenLeft) / popup.outerWidth);
+                        const gridY = Math.round((popup.screenTop - window.screenTop) / popup.outerHeight);
+
+                        if (x != gridX || y != gridY) {
+                            trySwap(x, y, gridX, gridY);
+                            return;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -286,7 +345,7 @@
         Object.keys(map).forEach((key) => {
             const tile = map[key];
 
-            if (tile.popup) {
+            if (tile && tile.popup) {
                 tile.popup.close();
             }
 
