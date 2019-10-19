@@ -13,6 +13,7 @@
         ];
 
     var mode = '';
+    var score = 0;
 
     function wait(milliseconds) {
         return new Promise((resolve, reject) => {
@@ -46,7 +47,7 @@
 
         tile.popup = popup;
 
-        popup.document.write('<body style="background: #'+color+'"></body>');
+        popup.document.write('<body style="background: #'+color+';font-size: 20px"></body>');
     }
 
     // NOTE: The next three functions could totally be optimized but that hurts my brain too much
@@ -196,6 +197,8 @@
         const screenY = (gridY*minHeight)+window.screenTop;
         const popup = tile.popup;
 
+        popup.document.body.innerHTML = '';
+
         if (speed) {
             const steps = speed/10;
             const xDiff = screenX-popup.screenLeft;
@@ -257,6 +260,8 @@
         const matches = checkMatches();
 
         matches.forEach((tile) => {
+            score ++;
+
             tile.popup.close();
             tile.popup = null;
         });
@@ -317,6 +322,11 @@
             setTimeout(loop, 1000/10);
         }
 
+        const scorePopup = getTile(0, 0).popup;
+        if (scorePopup) {
+            scorePopup.document.body.innerHTML = 'Score: ' + score;
+        }
+
         if (mode == 'movable' && Date.now() - lastMoveCheck > 200) {
             lastMoveCheck = Date.now();
 
@@ -344,6 +354,7 @@
     }
 
     function setup() {
+        score = 0;
         sizingPopup = window.open('popup.html', 'popup-0-0', 'width=1,height=1,left='+window.screenLeft+',top='+window.screenTop);
         setTimeout(size, 200);
     }
