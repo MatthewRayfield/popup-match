@@ -241,16 +241,16 @@
                     await fallAndFill();
                 }
             }
-        }
-        else {
-            console.log('no matches');
+            else {
+                console.log('no matches');
 
-            // move back
-            map[aX+','+aY] = aTile;
-            map[bX+','+bY] = bTile;
+                // move back
+                map[aX+','+aY] = aTile;
+                map[bX+','+bY] = bTile;
 
-            moveTile(aTile, aX, aY);
-            moveTile(bTile, bX, bY);
+                moveTile(aTile, aX, aY);
+                moveTile(bTile, bX, bY);
+            }
         }
 
         mode = 'movable';
