@@ -12,7 +12,7 @@
             'ff0000', '33cc33'
         ];
 
-    var mode = 'movable';
+    var mode = '';
 
     function wait(milliseconds) {
         return new Promise((resolve, reject) => {
@@ -186,6 +186,7 @@
                 }
             }
 
+            mode = 'movable';
             setTimeout(loop, 200);
         }, 200);
     }
@@ -312,7 +313,9 @@
 
     let lastMoveCheck = 0;
     function loop() {
-        setTimeout(loop, 1000/10);
+        if (mode != 'closed') {
+            setTimeout(loop, 1000/10);
+        }
 
         if (mode == 'movable' && Date.now() - lastMoveCheck > 200) {
             lastMoveCheck = Date.now();
@@ -322,7 +325,11 @@
                     const tile = getTile(x, y);
                     const popup = tile.popup;
 
-                    if (popup) {
+                    if (popup.closed) {
+                        close();
+                        return;
+                    }
+                    else {
                         const gridX = Math.round((popup.screenLeft - window.screenLeft) / popup.outerWidth);
                         const gridY = Math.round((popup.screenTop - window.screenTop) / popup.outerHeight);
 
@@ -342,6 +349,8 @@
     }
 
     function close() {
+        mode = 'closed';
+
         Object.keys(map).forEach((key) => {
             const tile = map[key];
 
