@@ -222,35 +222,30 @@
 
         const aTile = getTile(aX, aY);
         const bTile = getTile(bX, bY);
+        const dist = Math.abs(aX-bX) + Math.abs(aY-bY);
 
         map[aX+','+aY] = bTile;
         map[bX+','+bY] = aTile;
 
-        if (aTile.popup && bTile.popup) {
-            if (checkMatches()) {
-                console.log('has matches');
+        if (dist == 1 && checkMatches()) {
+            moveTile(aTile, bX, bY);
+            moveTile(bTile, aX, aY);
+            await wait(500);
 
-                moveTile(aTile, bX, bY);
-                moveTile(bTile, aX, aY);
+            while (checkMatches()) {
+                removeMatches();
                 await wait(500);
 
-                while (checkMatches()) {
-                    removeMatches();
-                    await wait(500);
-
-                    await fallAndFill();
-                }
+                await fallAndFill();
             }
-            else {
-                console.log('no matches');
+        }
+        else {
+            // move back
+            map[aX+','+aY] = aTile;
+            map[bX+','+bY] = bTile;
 
-                // move back
-                map[aX+','+aY] = aTile;
-                map[bX+','+bY] = bTile;
-
-                moveTile(aTile, aX, aY);
-                moveTile(bTile, bX, bY);
-            }
+            moveTile(aTile, aX, aY);
+            moveTile(bTile, bX, bY);
         }
 
         mode = 'movable';
@@ -308,7 +303,6 @@
             await wait(500);
 
             if (repeat) {
-                console.log('repeat');
                 await fallAndFill();
             }
 
