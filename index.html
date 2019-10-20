@@ -141,23 +141,20 @@
     }
 
     function generateMap() {
-        let count = 0;
-
         do {
             for (x = 0; x < gridWidth; x ++) {
                 for (y = 0; y < gridHeight; y ++) {
-                    const type = Math.floor(Math.random()*colors.length);
-                    // TODO: usethisagain??? while ((x>0 && map[(x-1)+','+y]==r) || (y>0 && map[x+','+(y-1)]==r));
+                    let type;
+                    do {
+                        type = Math.floor(Math.random()*colors.length);
+                    }
+                    while ((x>1 && getTile(x-1,y).type == type && getTile(x-2,y).type == type) || (y>1 && getTile(x,y-1).type == type && getTile(x,y-2).type == type));
 
                     map[x+','+y] = {type};
                 }
             }
-
-            count ++;
         }
         while (checkMatches() || !checkMoves());
-
-        console.log('regens ' + count);
     }
     
     async function size() {
