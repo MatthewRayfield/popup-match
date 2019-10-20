@@ -160,36 +160,35 @@
         console.log('regens ' + count);
     }
     
-    function size() {
+    async function size() {
         sizingPopup.resizeTo(1, 1);
 
-        setTimeout(async () => {
-            var x, y;
+        await wait(200);
 
-            minWidth = sizingPopup.outerWidth;
-            minHeight = sizingPopup.outerHeight;
+        minWidth = sizingPopup.outerWidth;
+        minHeight = sizingPopup.outerHeight;
 
-            sizingPopup.close();
-            sizingPopup = null;
+        sizingPopup.close();
+        sizingPopup = null;
 
-            gridWidth = 5;//Math.floor(window.outerWidth / minWidth);
-            gridHeight = Math.floor(window.outerHeight / minHeight);
+        gridWidth = 5;//Math.floor(window.outerWidth / minWidth);
+        gridHeight = Math.floor(window.outerHeight / minHeight);
 
-            //minWidth = Math.floor(window.outerWidth / gridWidth);
-            minHeight = Math.floor(window.outerHeight / gridHeight);
+        //minWidth = Math.floor(window.outerWidth / gridWidth);
+        minHeight = Math.floor(window.outerHeight / gridHeight);
 
-            generateMap();
+        generateMap();
 
-            for (x = 0; x < gridWidth; x ++) {
-                for (y = 0; y < gridHeight; y ++) {
-                    placePopup(x, y);
-                    await wait(200);
-                }
+        for (let x = 0; x < gridWidth; x ++) {
+            for (let y = 0; y < gridHeight; y ++) {
+                placePopup(x, y);
+                await wait(200);
             }
+        }
 
-            mode = 'movable';
-            setTimeout(loop, 200);
-        }, 200);
+        await wait(200);
+        mode = 'movable';
+        loop();
     }
 
     async function moveTile(tile, gridX, gridY, speed) {
@@ -230,11 +229,11 @@
         if (dist == 1 && checkMatches()) {
             moveTile(aTile, bX, bY);
             moveTile(bTile, aX, aY);
-            await wait(500);
+            await wait(200);
 
             while (checkMatches()) {
                 removeMatches();
-                await wait(500);
+                await wait(200);
 
                 await fallAndFill();
             }
