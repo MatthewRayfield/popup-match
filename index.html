@@ -33,16 +33,20 @@
     }
 
     function placePopup(x, y) {
-        const tile = getTile(x, y);
-        const type = types[tile.type];
-        const sX = (x*minWidth)+window.screenLeft;
-        const sY = (y*minHeight)+window.screenTop+yOffset;
+        return new Promise((resolve, reject) => {
+            const tile = getTile(x, y);
+            const type = types[tile.type];
+            const sX = (x*minWidth)+window.screenLeft;
+            const sY = (y*minHeight)+window.screenTop+yOffset;
 
-        const popup = window.open(type+'.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
-        popup.resizeTo(minWidth, minHeight);
-        popup.moveTo(sX, sY);
+            const popup = window.open(type+'.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+            popup.addEventListener('load', resolve);
 
-        tile.popup = popup;
+            popup.resizeTo(minWidth, minHeight);
+            popup.moveTo(sX, sY);
+
+            tile.popup = popup;
+        });
     }
 
     // NOTE: The next three functions could totally be optimized but that hurts my brain too much
@@ -183,12 +187,10 @@
 
         for (let x = 0; x < gridWidth; x ++) {
             for (let y = 0; y < gridHeight; y ++) {
-                placePopup(x, y);
-                await wait(200);
+                await placePopup(x, y);
             }
         }
 
-        await wait(200);
         mode = 'movable';
         loop();
     }
@@ -198,7 +200,9 @@
         const screenY = (gridY*minHeight)+window.screenTop+yOffset;
         const popup = tile.popup;
 
-        popup.scoreBox.innerHTML = '';
+        if (popup.scoreBox) {
+            popup.scoreBox.innerHTML = '';
+        }
 
         if (speed) {
             const steps = speed/10;
@@ -292,7 +296,7 @@
                         if (y == 0) {
                             const type = Math.floor(Math.random()*types.length);
                             map[x+','+y] = {type};
-                            placePopup(x, y);
+                            await placePopup(x, y);
                         }
                         else {
                             repeat = true;
@@ -300,8 +304,6 @@
                     }
                 }
             }
-
-            await wait(500);
 
             if (repeat) {
                 await fallAndFill();
@@ -317,7 +319,7 @@
         }
 
         const scorePopup = getTile(0, 0).popup;
-        if (scorePopup) {
+        if (scorePopup && scorePopup.scoreBox) {
             scorePopup.scoreBox.innerHTML = 'Score: ' + score;
         }
 
