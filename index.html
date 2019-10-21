@@ -1,7 +1,8 @@
 <script>
     var sizingPopup,
         minWidth, minHeight,
-        gridWidth, gridHeight;
+        gridWidth, gridHeight,
+        yOffset;
 
     var map = {};
     
@@ -35,10 +36,11 @@
         const tile = getTile(x, y);
         const type = types[tile.type];
         const sX = (x*minWidth)+window.screenLeft;
-        const sY = (y*minHeight)+window.screenTop;
+        const sY = (y*minHeight)+window.screenTop+yOffset;
 
         const popup = window.open(type+'.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
         popup.resizeTo(minWidth, minHeight);
+        popup.moveTo(sX, sY);
 
         tile.popup = popup;
     }
@@ -152,8 +154,11 @@
     
     async function size() {
         sizingPopup.resizeTo(1, 1);
+        sizingPopup.moveTo(window.screenLeft, window.screenTop);
 
         await wait(200);
+
+        yOffset = window.screenTop - sizingPopup.screenTop;
 
         minWidth = sizingPopup.outerWidth;
         minHeight = sizingPopup.outerHeight;
@@ -161,10 +166,17 @@
         sizingPopup.close();
         sizingPopup = null;
 
-        gridWidth = 5;//Math.floor(window.outerWidth / minWidth);
+        if (minWidth < 150) {
+            minWidth = 150;
+        }
+        if (minHeight < 150) {
+            minHeight = 150;
+        }
+
+        gridWidth = Math.floor(window.outerWidth / minWidth);
         gridHeight = Math.floor(window.outerHeight / minHeight);
 
-        //minWidth = Math.floor(window.outerWidth / gridWidth);
+        minWidth = Math.floor(window.outerWidth / gridWidth);
         minHeight = Math.floor(window.outerHeight / gridHeight);
 
         generateMap();
@@ -183,7 +195,7 @@
 
     async function moveTile(tile, gridX, gridY, speed) {
         const screenX = (gridX*minWidth)+window.screenLeft;
-        const screenY = (gridY*minHeight)+window.screenTop;
+        const screenY = (gridY*minHeight)+window.screenTop+yOffset;
         const popup = tile.popup;
 
         popup.scoreBox.innerHTML = '';
@@ -299,7 +311,6 @@
         });
     }
 
-    let lastMoveCheck = 0;
     function loop() {
         if (mode != 'closed') {
             setTimeout(loop, 1000/10);
@@ -310,9 +321,7 @@
             scorePopup.scoreBox.innerHTML = 'Score: ' + score;
         }
 
-        if (mode == 'movable' && Date.now() - lastMoveCheck > 200) {
-            lastMoveCheck = Date.now();
-
+        if (mode == 'movable') {
             for (let x = 0; x < gridWidth; x ++) {
                 for (let y = 0; y < gridHeight; y ++) {
                     const tile = getTile(x, y);
