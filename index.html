@@ -5,12 +5,7 @@
 
     var map = {};
     
-    var colors = [
-            //'ff0000', '00ff00', '0000ff',
-            //'ffff00', 'ff00ff', '00ffff'
-            '555555', 'ffaaff', '33ffff',
-            'ff0000', '33cc33'
-        ];
+    var types = ['shrug', 'money', 'umbrella', 'duck', 'corn'];
 
     var mode = '';
     var score = 0;
@@ -38,16 +33,14 @@
 
     function placePopup(x, y) {
         const tile = getTile(x, y);
-        const color = colors[tile.type];
+        const type = types[tile.type];
         const sX = (x*minWidth)+window.screenLeft;
         const sY = (y*minHeight)+window.screenTop;
 
-        const popup = window.open('popup.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+        const popup = window.open(type+'.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
         popup.resizeTo(minWidth, minHeight);
 
         tile.popup = popup;
-
-        popup.document.write('<body style="background: #'+color+';font-size: 20px"></body>');
     }
 
     // NOTE: The next three functions could totally be optimized but that hurts my brain too much
@@ -146,7 +139,7 @@
                 for (y = 0; y < gridHeight; y ++) {
                     let type;
                     do {
-                        type = Math.floor(Math.random()*colors.length);
+                        type = Math.floor(Math.random()*types.length);
                     }
                     while ((x>1 && getTile(x-1,y).type == type && getTile(x-2,y).type == type) || (y>1 && getTile(x,y-1).type == type && getTile(x,y-2).type == type));
 
@@ -193,7 +186,7 @@
         const screenY = (gridY*minHeight)+window.screenTop;
         const popup = tile.popup;
 
-        popup.document.body.innerHTML = '';
+        popup.scoreBox.innerHTML = '';
 
         if (speed) {
             const steps = speed/10;
@@ -285,7 +278,7 @@
 
                     if (!tile.popup) {
                         if (y == 0) {
-                            const type = Math.floor(Math.random()*colors.length);
+                            const type = Math.floor(Math.random()*types.length);
                             map[x+','+y] = {type};
                             placePopup(x, y);
                         }
@@ -314,7 +307,7 @@
 
         const scorePopup = getTile(0, 0).popup;
         if (scorePopup) {
-            scorePopup.document.body.innerHTML = 'Score: ' + score;
+            scorePopup.scoreBox.innerHTML = 'Score: ' + score;
         }
 
         if (mode == 'movable' && Date.now() - lastMoveCheck > 200) {
@@ -345,7 +338,7 @@
 
     function setup() {
         score = 0;
-        sizingPopup = window.open('popup.html', 'popup-0-0', 'width=1,height=1,left='+window.screenLeft+',top='+window.screenTop);
+        sizingPopup = window.open('popup.html', 'popup-'+Date.now(), 'width=1,height=1,left='+window.screenLeft+',top='+window.screenTop);
         setTimeout(size, 200);
     }
 
@@ -378,7 +371,7 @@
                 const cell = document.createElement('td');
                 cell.style.width = 20;
                 cell.style.height = 20;
-                cell.style.background = `#${colors[tile.type]}`;
+                cell.style.background = `#${types[tile.type]}`;
                 row.appendChild(cell);
             }
 
