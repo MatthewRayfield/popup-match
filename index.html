@@ -39,7 +39,7 @@
             const sX = (x*minWidth)+window.screenLeft;
             const sY = (y*minHeight)+window.screenTop+yOffset;
 
-            const popup = window.open(type+'.html?'+Date.now(), 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
+            const popup = window.open(type+'.html', 'popup-'+Date.now(), 'width='+minWidth+',height='+minHeight+',left='+sX+',top='+sY);
             popup.addEventListener('load', resolve);
 
             popup.resizeTo(minWidth, minHeight);
